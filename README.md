@@ -10,20 +10,18 @@ Small Company Vacation & Sick Leave Tracker
   - Submit with **mandatory reason/comment**
   - Pending requests: user can **edit or delete**
   - Approved requests: authorized users can **pull back / cancel** (with mandatory comment)
-  - Full **history** of all changes (created, edited, deleted, approved, pulled back) always visible
-  - Types: Vacation, Special Leave, Medical
-- Approvals: Configurable self-approval or multi-user approval; role-based who can modify approved requests
-- Calendar: See who is out of office
-- Overview: All users stats + Excel export for payroll (monthly breakdown)
-- Telegram Bot: Submit requests and receive notifications
+  - Full **history** of all changes always visible
+  - Balance is recalculated on pull-back
+- **Approver view** (`/approvals`): see pending/approved, approve, pull-back, view history
+- Calendar: who is out + upcoming birthdays (and employment start dates stored)
+- Overview: all users stats + Excel export for payroll
+- Telegram notifications (stub ready for pull-back/edit/approve)
 - Admin:
-  - Security & Audit Trail (brute force, SQLi detection, logs, graphs)
-  - Telegram setup and notifications
-  - Rules engine (e.g., no sick leave H1/H2 bonuses)
-  - Aruba Holidays import (non-deductible company closures)
-  - Company special closure days (deductible)
-  - User & role management (including who can modify approved requests)
-  - Carry-forward rules with reminders
+  - Create users with **employment start date** and **starting vacation balance** (required)
+  - Import past taken leave via CSV template (`/admin/import`)
+  - Security & Audit Trail
+  - Rules engine, Aruba Holidays, company closures
+  - Role management
 
 ## Tech Stack
 
