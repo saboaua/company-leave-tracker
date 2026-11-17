@@ -9,6 +9,7 @@ create table public.roles (
   name text unique not null, -- admin, manager, employee, approver
   can_approve boolean default false,
   can_self_approve boolean default false,
+  can_modify_approved boolean default false, -- can edit/delete/pull-back approved requests
   created_at timestamptz default now()
 );
 
@@ -46,11 +47,25 @@ create table public.leave_requests (
   start_date date not null,
   end_date date not null,
   days numeric not null,
-  status text default 'pending' check (status in ('pending', 'approved', 'denied')),
-  reason text,
+  status text default 'pending' check (status in ('pending', 'approved', 'denied', 'cancelled')),
+  reason text not null, -- mandatory comment/reason
   approved_by uuid references public.profiles(id),
+  cancelled_by uuid references public.profiles(id),
+  cancelled_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
+);
+
+-- Request change history (edits, deletes, pull-backs)
+create table public.leave_request_history (
+  id uuid primary key default uuid_generate_v4(),
+  request_id uuid references public.leave_requests(id) on delete cascade,
+  action text not null check (action in ('created', 'edited', 'deleted', 'approved', 'denied', 'cancelled', 'pulled_back')),
+  changed_by uuid references public.profiles(id),
+  old_data jsonb,
+  new_data jsonb,
+  comment text,
+  created_at timestamptz default now()
 );
 
 -- Company closures and Aruba holidays
@@ -67,7 +82,7 @@ create table public.rules (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
   description text,
-  config jsonb, -- e.g. {"no_sick_h1": true, "bonus_days": 1}
+  config jsonb,
   active boolean default true
 );
 
@@ -84,7 +99,7 @@ create table public.audit_logs (
 -- Security events
 create table public.security_events (
   id uuid primary key default uuid_generate_v4(),
-  type text not null, -- brute_force, sql_injection, etc.
+  type text not null,
   details jsonb,
   ip_address text,
   created_at timestamptz default now()
@@ -94,8 +109,16 @@ create table public.security_events (
 alter table public.profiles enable row level security;
 alter table public.leave_requests enable row level security;
 alter table public.leave_balances enable row level security;
+alter table public.leave_request_history enable row level security;
 
 -- Users can see their own data
 create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
 create policy "Users can view own requests" on public.leave_requests for select using (auth.uid() = user_id);
 create policy "Users can insert own requests" on public.leave_requests for insert with check (auth.uid() = user_id);
+create policy "Users can update own pending requests" on public.leave_requests for update using (auth.uid() = user_id and status = 'pending');
+create policy "Users can delete own pending requests" on public.leave_requests for delete using (auth.uid() = user_id and status = 'pending');
+
+-- History is readable by request owner and approvers (expand as needed)
+create policy "Users can view history of own requests" on public.leave_request_history for select using (
+  exists (select 1 from public.leave_requests r where r.id = request_id and r.user_id = auth.uid())
+);
